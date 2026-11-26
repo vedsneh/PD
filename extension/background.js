@@ -15,7 +15,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     chrome.action.setBadgeBackgroundColor({ tabId, color: isPhishing ? '#c0392b' : '#27ae60' });
 
     if (isPhishing) {
-      chrome.tabs.sendMessage(tabId, { type: 'SHOW_WARNING', data });
+      chrome.tabs.sendMessage(tabId, { type: 'SHOW_WARNING', data }).catch(() => {});
     }
   } catch (e) {
     console.log('Backend not reachable', e);

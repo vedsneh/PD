@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from feature_extractor import extract_lexical_features, _tld_extractor
+from feature_extractor import generate_reasons
 
 app = FastAPI(title="Phishing Detector API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -101,34 +102,70 @@ def explain(model, row_df, label, top_k=3):
 
 
 @app.post("/predict")
+
 def predict(req: URLRequest):
     ext = _tld_extractor(req.url)
     base_domain = f"{ext.domain}.{ext.suffix}"
     reasons = []
 
     if base_domain in ALLOWLIST_DOMAINS:
-        label, confidence, stage_used = "legitimate", 0.99, "allowlist"
-        reasons = ["Domain is on the trusted-domain list"]
+        label = "legitimate"
+        confidence = 0.99
+        stage_used = "allowlist"
+
+        reasons = [
+            "The domain is present in the trusted allowlist"
+        ]
+
     else:
         raw = extract_lexical_features(req.url)
-        lex_row = pd.DataFrame([[raw.get(f, 0) for f in lexical_features]], columns=lexical_features)
+
+        # Generate human-readable explanations
+        reasons = generate_reasons(raw, req.url)
+
+        lex_row = pd.DataFrame(
+            [[raw.get(f, 0) for f in lexical_features]],
+            columns=lexical_features
+        )
+
         proba1 = stage1_model.predict_proba(lex_row)[0][1]
-        confident = proba1 >= CONFIDENCE_THRESHOLD or proba1 <= (1 - CONFIDENCE_THRESHOLD)
+
+        confident = (
+            proba1 >= CONFIDENCE_THRESHOLD
+            or proba1 <= (1 - CONFIDENCE_THRESHOLD)
+        )
+
         if confident:
-            verdict_proba, stage_used = proba1, "stage1_fast"
+            verdict_proba = proba1
+            stage_used = "stage1_fast"
         else:
             verdict_proba = stage2_model.predict_proba(lex_row)[0][1]
             stage_used = "stage2_deep"
+
         label = "phishing" if verdict_proba >= 0.5 else "legitimate"
-        confidence = float(verdict_proba if label == "phishing" else 1 - verdict_proba)
+
+        confidence = float(
+            verdict_proba if label == "phishing"
+            else 1 - verdict_proba
+        )
+
         reasons = explain(stage1_model, lex_row, label)
 
-    conn.execute("INSERT INTO logs (url, verdict, confidence, stage_used, ts) VALUES (?,?,?,?,?)",
-                 (req.url, label, confidence, stage_used, datetime.utcnow().isoformat()))
+    # Save prediction in database
+    conn.execute(
+        "INSERT INTO logs (url, verdict, confidence, stage_used, ts) VALUES (?,?,?,?,?)",
+        (req.url, label, confidence, stage_used, datetime.utcnow().isoformat())
+    )
     conn.commit()
-    return {"url": req.url, "verdict": label, "confidence": round(confidence, 4),
-            "stage_used": stage_used, "reasons": reasons}
 
+    # Return prediction result
+    return {
+        "url": req.url,
+        "verdict": label,
+        "confidence": round(confidence, 4),
+        "stage_used": stage_used,
+        "reasons": reasons
+    }
 
 @app.post("/report")
 def report(req: ReportRequest):

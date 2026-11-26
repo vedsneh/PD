@@ -14,7 +14,53 @@ BRANDS = {'paypal', 'google', 'amazon', 'apple', 'microsoft', 'facebook',
 PHISH_HINT_WORDS = {'login', 'signin', 'verify', 'secure', 'account', 'update',
                      'confirm', 'banking', 'password', 'ebay', 'webscr'}
 
+def generate_reasons(features: dict, url: str) -> list[str]:
+    reasons = []
 
+    if features["ip"]:
+        reasons.append("The website uses an IP address instead of a normal domain")
+
+    if features["punycode"]:
+        reasons.append("The domain uses punycode, which can be used to disguise characters")
+
+    if features["random_domain"]:
+        reasons.append("The domain has an unusual/random-looking structure")
+
+    if features["prefix_suffix"]:
+        reasons.append("The domain contains a suspicious hyphenated structure")
+
+    if features["shortening_service"]:
+        reasons.append("A URL shortening service is being used")
+
+    if features["phish_hints"] > 0:
+        reasons.append("Login, verification, security, or account-related keywords detected")
+
+    if features["brand_in_subdomain"]:
+        reasons.append("A known brand name appears in the subdomain")
+
+    if features["brand_in_path"]:
+        reasons.append("A known brand name appears in the URL path")
+
+    if features["suspicious_tld"]:
+        reasons.append("The website uses a potentially suspicious top-level domain")
+
+    if features["abnormal_subdomain"]:
+        reasons.append("The subdomain has an unusual structure")
+
+    if features["http_in_path"]:
+        reasons.append("An HTTP URL appears inside the path")
+
+    if features["tld_in_path"]:
+        reasons.append("The domain extension appears inside the URL path")
+
+    if features["nb_at"] > 0:
+        reasons.append("The URL contains an @ symbol, which can obscure the real destination")
+
+    if not reasons:
+        reasons.append("No major suspicious URL characteristics were detected")
+
+    return reasons
+    
 def _shannon_entropy(s):
     if not s:
         return 0

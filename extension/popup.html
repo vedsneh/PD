@@ -1,23 +1,266 @@
 <!DOCTYPE html>
 <html>
 <head>
-<style>
-  body { width: 320px; font-family: sans-serif; padding: 14px; }
-  #result { margin-top: 12px; padding: 10px; border-radius: 6px; display: none; }
-  .safe { background: #d4edda; color: #155724; }
-  .risky { background: #f8d7da; color: #721c24; }
-  .why-title { margin-top: 8px; font-weight: bold; font-size: 13px; }
-  #result ul { margin: 4px 0 0 18px; padding: 0; font-size: 13px; }
-  #result li { margin-top: 3px; }
-  button { padding: 6px 10px; margin-top: 8px; cursor: pointer; }
-</style>
+  <meta charset="UTF-8" />
+  <title>Phishing Shield</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f7f9fc;
+      color: #1f2937;
+    }
+
+    .header {
+      background: #ffffff;
+      padding: 16px 18px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .shield {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: #eef4ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+    }
+
+    .brand h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .content {
+      padding: 16px 18px 18px;
+    }
+
+    .page-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    #status {
+      font-size: 12px;
+      color: #4b5563;
+      margin: 0 0 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #loading {
+      text-align: center;
+      color: #6b7280;
+      font-size: 13px;
+      padding: 20px 0;
+    }
+
+    #result {
+      margin-top: 10px;
+      padding: 14px;
+      border-radius: 10px;
+      display: none;
+      border: 1px solid transparent;
+    }
+
+    .safe {
+      background: #ecfdf3;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .risky {
+      background: #fff1f2;
+      color: #b91c1c;
+      border-color: #fecdd3;
+    }
+
+    .result-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .result-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .confidence-label {
+      font-size: 11px;
+      color: inherit;
+      opacity: 0.8;
+      margin-bottom: 5px;
+    }
+
+    .confidence-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      width: 0%;
+      background: currentColor;
+      border-radius: 10px;
+      transition: width 0.4s ease;
+    }
+
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      flex: 1;
+      padding: 9px 10px;
+      border: none;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    #reportBtn {
+      display: none;
+      background: #ffffff;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      margin-top: 12px;
+      width: 100%;
+    }
+
+    #reportBtn:hover:not(:disabled) {
+      background: #f3f4f6;
+    }
+
+    #reportBtn:disabled {
+      cursor: default;
+      opacity: 0.7;
+    }
+
+    #reportStatus {
+      display: none;
+      margin: 8px 0 0;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    #reportStatus.success {
+      color: #166534;
+    }
+
+    #reportStatus.error {
+      color: #b91c1c;
+    }
+
+    .footer {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    .reasons {
+        margin-top: 15px;
+        text-align: left;
+      }
+
+      .reasons strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .reasons ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .reasons li {
+        margin-bottom: 6px;
+      }
+  </style>
 </head>
+
 <body>
-  <h3>Phishing Shield</h3>
-  <p id="loading">Checking current page...</p>
-  <div id="result"></div>
-  <button id="reportBtn" style="display:none;">Report this site</button>
-  <p id="status"></p>
+
+  <div class="header">
+    <div class="brand">
+      <div class="shield">🛡️</div>
+
+      <div>
+        <h2>Phishing Shield</h2>
+        <p>Website security check</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="page-label">
+      Current website
+    </div>
+
+    <p id="status">
+      Checking current page...
+    </p>
+
+    <p id="loading">
+      Analyzing website...
+    </p>
+
+    <!-- Prediction result -->
+    <div id="result"></div>
+
+    <button id="reportBtn" type="button">Report as suspected phishing</button>
+    <p id="reportStatus" role="status" aria-live="polite"></p>
+
+    <div class="footer">
+      Analysis powered by Phishing Shield
+    </div>
+
+  </div>
+
   <script src="popup.js"></script>
+
 </body>
 </html>
